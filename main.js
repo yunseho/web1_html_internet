@@ -2,39 +2,68 @@ var http = require('http');
 var fs = require('fs');
 var url = require('url');
 
-var app = http.createServer(function(request,response){
-    var _url = request.url;
-    var queryData =url.parse(_url,true).query;
-    var title = queryData.id;
-    console.log(queryData.id);
-    if(_url == '/'){
-        title ='Welcome';
+function templateHTML(title,List,body){
+  return `
+  <!doctype html>
+        <html>
+        <head>
+          <title>WEB! - ${title}</title>
+          <meta charset="utf-8">
+        </head>
+        <body>
+          <h1><a href="/">WEB</a></h1>
+          ${List}
+          ${body}
+        </body>
+        </html>
+      `;
+}
+
+function templateList(fileList) {
+  var List = '<ul>';
+  var i = 0;
+  while (i < fileList.length) {
+    List = List + `<li><a href="/?id=${fileList[i]}">${fileList[i]}</a></li>`
+    i = i + 1;
+    console.log(i);
+  }
+  List = List + '<ul>';
+  return List;
+  
+}
+
+
+var app = http.createServer(function (request, response) {
+  var _url = request.url;
+  var queryData = url.parse(_url, true).query;
+  var pathname = url.parse(_url, true).pathname;
+  
+  if (pathname === '/') {
+    if (queryData.id === undefined) {
+
+      fs.readdir('./data', function (error, fileList) {
+        var title = title = 'welcome';
+        var description = 'hell hode.js';
+        var List = templateList(fileList);
+        var template = templateHTML(title,List,`<h2>${title}</h2>${description}`);
+        response.writeHead(200);
+        response.end(template);
+      })
+    } else { //id값이 있을 때
+      fs.readdir('./data', function (error, fileList) {
+        fs.readFile(`./data/${queryData.id}`, 'utf8',
+        function (err, description) {
+          var title = queryData.id;
+          var List = templateList(fileList);
+          var template = templateHTML(title,List,`<h2>${title}</h2>${description}`);
+          response.writeHead(200);
+          response.end(template);
+        });
+      });
     }
-    if(_url == '/favicon.ico'){
-        return response.writeHead(404);
-    }
-    response.writeHead(200);
-    var template = `
-    <!doctype html>
-<html>
-<head>
-  <title>${title}</title>
-  <meta charset="utf-8">
-</head>
-<body>
-  <h1><a href="/">WEB</a></h1>
-  <ul>
-    <li><a href="/?id=HTML">HTML</a></li>
-    <li><a href="/?id=CSS">CSS</a></li>
-    <li><a href="/?id=JavaScript">JavaScript</a></li>
-  </ul>
-  <h2>${title}</h2>
-  <p>
-    Cascading Style Sheets (CSS) is a style sheet language used for describing the presentation of a document written in a markup language. Although most often used to set the visual style of web pages and user interfaces written in HTML and XHTML, the language can be applied to any XML document, including plain XML, SVG and XUL, and is applicable to rendering in speech, or on other media. Along with HTML and JavaScript, CSS is a cornerstone technology used by most websites to create visually engaging webpages, user interfaces for web applications, and user interfaces for many mobile applications.
-  </p>
-</body>
-</html>
-    `;
-    response.end(template);
+  } else {
+    response.writeHead(404);
+    response.end('Not found');
+  }
 });
 app.listen(3000);
