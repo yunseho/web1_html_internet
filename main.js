@@ -3,6 +3,36 @@ var fs = require('fs');
 var url = require('url');
 var qs = require('querystring')
 
+var template={
+  HTML:function (title,List,body,control){
+    return `
+    <!doctype html>
+          <html>
+          <head>
+            <title>WEB! - ${title}</title>
+            <meta charset="utf-8">
+          </head>
+          <body>
+            <h1><a href="/">WEB</a></h1>
+            ${List}
+            ${control}
+            ${body}
+          </body>
+          </html>
+        `;
+  },List: function (fileList) {
+    var List = '<ul>';
+    var i = 0;
+    while (i < fileList.length) {
+      List = List + `<li><a href="/?id=${fileList[i]}">${fileList[i]}</a></li>`
+      i = i + 1;
+    }
+    List = List + '<ul>';
+    return List;
+    
+  }
+}
+
 function templateHTML(title,List,body,control){
   return `
   <!doctype html>
@@ -34,6 +64,7 @@ function templateList(fileList) {
 }
 
 
+
 var app = http.createServer(function (request, response) {
   //createServer는 node.js로 웹브라우저 접속이 들어올때마다 콜백함수를 node.js가  호출한다 그때에 저함수에 인자를 2개 주는데 request에는 요청할 떄의 웹브라우저가 보낸 정보를 response응답할때의 우리가 웹브라우저한테 전송할정보를 담는다
   var _url = request.url;
@@ -45,11 +76,20 @@ var app = http.createServer(function (request, response) {
       fs.readdir('./data', function (error, fileList) {
         var title = title = 'welcome';
         var description = 'hell hode.js';
+        /*
         var List = templateList(fileList);
-        var template = templateHTML(title,List,`<h2>${title}</h2>${description}`,
-        `<a href="/create">create</a>`);
+        var template = templateHTML(title,List,
+          `<h2>${title}</h2>${description}`,
+          `<a href="/create">create</a>`);
         response.writeHead(200);
         response.end(template);
+        */
+        var List = template.List(fileList);
+        var html = template.HTML(title,List,
+          `<h2>${title}</h2>${description}`,
+          `<a href="/create">create</a>`);
+        response.writeHead(200);
+        response.end(html);
       })
     } else { //id값이 있을 때
       fs.readdir('./data', function (error, fileList) {
@@ -57,10 +97,16 @@ var app = http.createServer(function (request, response) {
         function (err, description) {
           var title = queryData.id;
           var List = templateList(fileList);
-          var template = templateHTML(title,List,`<h2>${title}</h2>${description}`,
-          `<a href="/create">create</a>  <a href="update?id=${title}">update</a>`);
+          var html = templateHTML(title,List,`<h2>${title}</h2>${description}`,
+          `<a href="/create">create</a>  
+           <a href="update?id=${title}">update</a>
+          <form action="/delete_process" method="post">
+            <input type="hidden" name="id" value="${title}">
+            <input type="submit" value="delete">
+          </form>
+          `);
           response.writeHead(200);
-          response.end(template);
+          response.end(html);
         });
       });
     }
@@ -138,15 +184,37 @@ var app = http.createServer(function (request, response) {
       var id = post.id;
       var title = post.title;
       var description = post.description;
-      console.log(post);
+      fs.rename(`data/${id}`,`data/${title}`,function(error){})
+      //이름을 바꿔주고
+        fs.writeFile(`data/${title}`, description, 'utf8', function(err){
+          //바꿔준 이름에 description 를 전달해 주고
+          response.writeHead(302, {Location: `/?id=${title}`});
+          //타이틀 주소로 들어간다
+          response.end('');
+           console.log(post);
+        })
+      });
+     
       /*
       fs.writeFile(`data/${title}`, description, 'utf8', function(err){
       response.writeHead(302, {Location: `/?id=${title}`});
       response.end('success');
       */
       });
+  }else if(pathname=== '/delete_process'){
+    var body="";
+    request.on('data',function(data){
+      body =body + data; 
+    request.on('end',function(){
+      var post = qs.parse(body);
+      var id = post.id;
+      fs.unlink(`data/${id}`,function(error){
+        response.writeHead(302, {Location: `/`});
+        response.end('success');
+      })
+      });
     });
-  } else{
+    }else{
     response.writeHead(404);
     response.end('Not found');
   }
