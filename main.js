@@ -2,36 +2,9 @@ var http = require('http');
 var fs = require('fs');
 var url = require('url');
 var qs = require('querystring')
+var template =require('./lib/template.js')
+var path = require('path');
 
-var template={
-  HTML:function (title,List,body,control){
-    return `
-    <!doctype html>
-          <html>
-          <head>
-            <title>WEB! - ${title}</title>
-            <meta charset="utf-8">
-          </head>
-          <body>
-            <h1><a href="/">WEB</a></h1>
-            ${List}
-            ${control}
-            ${body}
-          </body>
-          </html>
-        `;
-  },List: function (fileList) {
-    var List = '<ul>';
-    var i = 0;
-    while (i < fileList.length) {
-      List = List + `<li><a href="/?id=${fileList[i]}">${fileList[i]}</a></li>`
-      i = i + 1;
-    }
-    List = List + '<ul>';
-    return List;
-    
-  }
-}
 
 function templateHTML(title,List,body,control){
   return `
@@ -93,7 +66,8 @@ var app = http.createServer(function (request, response) {
       })
     } else { //id값이 있을 때
       fs.readdir('./data', function (error, fileList) {
-        fs.readFile(`./data/${queryData.id}`, 'utf8',
+        var filteredId = path.parse(queryData.id).base
+        fs.readFile(`data/${filteredId}`, 'utf8',
         function (err, description) {
           var title = queryData.id;
           var List = templateList(fileList);
@@ -155,7 +129,8 @@ var app = http.createServer(function (request, response) {
     });
   } else if(pathname === '/update'){
     fs.readdir('./data', function (error, fileList) {
-      fs.readFile(`./data/${queryData.id}`, 'utf8',
+      var filteredId = path.parse(queryData.id).base;
+      fs.readFile(`./data/${filteredId}`, 'utf8',
       function (err, description) {
         var title = queryData.id;
         var List = templateList(fileList);
@@ -208,7 +183,8 @@ var app = http.createServer(function (request, response) {
     request.on('end',function(){
       var post = qs.parse(body);
       var id = post.id;
-      fs.unlink(`data/${id}`,function(error){
+      var filteredId = path.parse(id).base;
+      fs.unlink(`data/${filteredId}`,function(error){
         response.writeHead(302, {Location: `/`});
         response.end('success');
       })
